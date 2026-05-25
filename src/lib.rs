@@ -1,4 +1,4 @@
-//! Rust client and CLI support for Triad native IPC.
+//! Rust client for Triad native IPC.
 //!
 //! Most Rust users should start with [`Client`]:
 //!
@@ -14,16 +14,21 @@
 //! # }
 //! ```
 //!
-//! The client talks to Triad's Unix socket directly. The `eww-triad` binary is
-//! a wrapper around the same protocol and IPC helpers.
+//! The client talks to Triad's Unix socket directly. The `eww-triad` binary
+//! wraps the same client for shell and Eww use.
 
+#[cfg(feature = "cli")]
 #[doc(hidden)]
 pub mod cli;
 pub mod client;
 pub mod error;
+#[doc(hidden)]
 pub mod ipc;
+#[doc(hidden)]
 pub mod protocol;
+#[doc(hidden)]
 pub mod state;
+#[doc(hidden)]
 pub mod view;
 
 #[cfg(feature = "tokio")]

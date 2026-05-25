@@ -1,11 +1,21 @@
 # Rust API
 
-Use the crate when a Rust Eww helper needs Triad state or commands. Do not shell
-out to `eww-triad` from Rust code.
+Use this crate when a Rust Eww helper, status service, or test harness needs
+Triad state. The client speaks native IPC over Triad's Unix socket. It does not
+spawn `eww-triad`.
 
-The package is named `eww-triad`. The crate is imported as `eww_triad`.
+The package is named `eww-triad`. Import it as `eww_triad`.
+
+For library use, disable default features so you do not pull in the CLI parser:
+
+```toml
+eww-triad = { git = "https://github.com/greenm01/eww-triad", default-features = false }
+```
 
 ## Blocking Client
+
+`Client` is the plain Unix-socket client. It works well for short helper
+programs and for threads that can block while reading Triad.
 
 ```rust
 use eww_triad::{Client, QueryRequest};
@@ -21,10 +31,36 @@ fn main() -> eww_triad::Result<()> {
 }
 ```
 
-`Client::connect_default()` uses `TRIAD_SOCKET`, then
-`$XDG_RUNTIME_DIR/triad.sock`. Use `Client::connect(path)` for a known socket.
+`Client::connect_default()` reads `TRIAD_SOCKET`, then
+`$XDG_RUNTIME_DIR/triad.sock`. Use `Client::connect(path)` when the socket path
+comes from your own config.
+
+## Reads
+
+`eww_state_once` returns the Eww projection. `state_raw` returns Triad state as
+raw JSON. `query` sends one typed native read request:
+
+```rust
+use eww_triad::{Client, QueryRequest};
+
+fn main() -> eww_triad::Result<()> {
+    let client = Client::connect_default()?;
+
+    for request in QueryRequest::ALL {
+        let reply = client.query(*request)?;
+        println!("{request}: {reply}");
+    }
+
+    Ok(())
+}
+```
+
+Use `request_raw` when Triad adds a read before this crate grows a wrapper.
 
 ## Commands
+
+High-level methods build native Triad IPC requests and send them to the socket.
+They do not edit local cached state.
 
 ```rust
 use eww_triad::{BindingKind, Client, LayoutTarget};
@@ -41,11 +77,12 @@ fn main() -> eww_triad::Result<()> {
 }
 ```
 
-The high-level methods build native Triad IPC requests. `request_raw` and
-`send_raw_action` are available when Triad adds a request before the crate has a
-typed wrapper.
+Use `send_raw_action` for action payloads that the typed helpers do not cover.
 
 ## Streaming
+
+`eww_stream` maintains a small cache from Triad events, projects each fresh
+state into `EwwState`, and reconnects after socket drops.
 
 ```rust
 use eww_triad::Client;
@@ -59,15 +96,26 @@ fn main() -> eww_triad::Result<()> {
 }
 ```
 
-`eww_stream` reconnects by default and emits a disconnected state when the
-socket drops.
+Use `event_stream` when you want raw native event envelopes:
+
+```rust
+use eww_triad::{Client, EventFilter};
+
+fn main() -> eww_triad::Result<()> {
+    let client = Client::connect_default()?;
+    client.event_stream(&[EventFilter::State, EventFilter::Window], |event| {
+        println!("{event}");
+        Ok(())
+    })
+}
+```
 
 ## Tokio
 
-Enable the optional feature for async use:
+Enable `tokio` for the async client:
 
 ```toml
-eww-triad = { git = "https://github.com/greenm01/eww-triad", features = ["tokio"] }
+eww-triad = { git = "https://github.com/greenm01/eww-triad", default-features = false, features = ["tokio"] }
 ```
 
 ```rust
@@ -81,3 +129,6 @@ async fn main() -> eww_triad::Result<()> {
     Ok(())
 }
 ```
+
+The async client mirrors the blocking client. Pick one client style per call
+site; there is no extra protocol layer behind the async feature.

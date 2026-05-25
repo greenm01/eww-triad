@@ -1,4 +1,6 @@
+use std::fmt;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use serde_json::Value;
 
@@ -158,6 +160,19 @@ impl Client {
 }
 
 impl QueryRequest {
+    pub const ALL: &'static [Self] = &[
+        Self::State,
+        Self::Capabilities,
+        Self::Workspaces,
+        Self::Outputs,
+        Self::Windows,
+        Self::FocusedWindow,
+        Self::OverviewState,
+        Self::KeyboardLayouts,
+        Self::LayoutState,
+        Self::Commands,
+    ];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::State => "state",
@@ -174,12 +189,59 @@ impl QueryRequest {
     }
 }
 
+impl fmt::Display for QueryRequest {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+impl FromStr for QueryRequest {
+    type Err = crate::Error;
+
+    fn from_str(value: &str) -> Result<Self> {
+        match value {
+            "state" => Ok(Self::State),
+            "capabilities" => Ok(Self::Capabilities),
+            "workspaces" => Ok(Self::Workspaces),
+            "outputs" => Ok(Self::Outputs),
+            "windows" => Ok(Self::Windows),
+            "focused-window" => Ok(Self::FocusedWindow),
+            "overview-state" => Ok(Self::OverviewState),
+            "keyboard-layouts" => Ok(Self::KeyboardLayouts),
+            "layout-state" => Ok(Self::LayoutState),
+            "commands" => Ok(Self::Commands),
+            unsupported => Err(crate::Error::UnsupportedRequest(unsupported.to_string())),
+        }
+    }
+}
+
 impl EventFilter {
+    pub const ALL: &'static [Self] = &[Self::State, Self::Layout, Self::Window];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::State => "state",
             Self::Layout => "layout",
             Self::Window => "window",
+        }
+    }
+}
+
+impl fmt::Display for EventFilter {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+impl FromStr for EventFilter {
+    type Err = crate::Error;
+
+    fn from_str(value: &str) -> Result<Self> {
+        match value {
+            "state" => Ok(Self::State),
+            "layout" => Ok(Self::Layout),
+            "window" => Ok(Self::Window),
+            unsupported => Err(crate::Error::UnsupportedEvent(unsupported.to_string())),
         }
     }
 }
@@ -191,6 +253,28 @@ impl BindingKind {
             Self::Pointer => "pointer",
             Self::Axis => "axis",
             Self::Gesture => "gesture",
+        }
+    }
+}
+
+impl fmt::Display for BindingKind {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+impl FromStr for BindingKind {
+    type Err = crate::Error;
+
+    fn from_str(value: &str) -> Result<Self> {
+        match value {
+            "key" => Ok(Self::Key),
+            "pointer" => Ok(Self::Pointer),
+            "axis" => Ok(Self::Axis),
+            "gesture" => Ok(Self::Gesture),
+            unsupported => Err(crate::Error::InvalidDispatchBinding(format!(
+                "unsupported binding kind: {unsupported}"
+            ))),
         }
     }
 }
@@ -474,6 +558,71 @@ mod tests {
         assert_eq!(QueryRequest::FocusedWindow.as_str(), "focused-window");
         assert_eq!(EventFilter::Window.as_str(), "window");
         assert_eq!(BindingKind::Gesture.as_str(), "gesture");
+    }
+
+    #[test]
+    fn query_request_display_parse_and_all_are_stable() {
+        assert_eq!(QueryRequest::ALL.len(), 10);
+        assert_eq!(
+            QueryRequest::ALL
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>(),
+            [
+                "state",
+                "capabilities",
+                "workspaces",
+                "outputs",
+                "windows",
+                "focused-window",
+                "overview-state",
+                "keyboard-layouts",
+                "layout-state",
+                "commands"
+            ]
+        );
+        assert_eq!(
+            "layout-state".parse::<QueryRequest>().unwrap(),
+            QueryRequest::LayoutState
+        );
+        assert!(matches!(
+            "not-real".parse::<QueryRequest>(),
+            Err(crate::Error::UnsupportedRequest(request)) if request == "not-real"
+        ));
+    }
+
+    #[test]
+    fn event_filter_display_parse_and_all_are_stable() {
+        assert_eq!(
+            EventFilter::ALL,
+            &[EventFilter::State, EventFilter::Layout, EventFilter::Window]
+        );
+        assert_eq!(
+            EventFilter::ALL
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>(),
+            ["state", "layout", "window"]
+        );
+        assert_eq!(
+            "window".parse::<EventFilter>().unwrap(),
+            EventFilter::Window
+        );
+        assert!(matches!(
+            "not-real".parse::<EventFilter>(),
+            Err(crate::Error::UnsupportedEvent(event)) if event == "not-real"
+        ));
+    }
+
+    #[test]
+    fn binding_kind_display_and_parse_are_stable() {
+        assert_eq!(BindingKind::Axis.to_string(), "axis");
+        assert_eq!("key".parse::<BindingKind>().unwrap(), BindingKind::Key);
+        assert!(matches!(
+            "not-real".parse::<BindingKind>(),
+            Err(crate::Error::InvalidDispatchBinding(message))
+                if message == "unsupported binding kind: not-real"
+        ));
     }
 
     #[test]

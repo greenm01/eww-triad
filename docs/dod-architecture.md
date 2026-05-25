@@ -1,25 +1,23 @@
 # eww-triad Data-Oriented Architecture
 
-`eww-triad` follows the same practical DOD habits as Triad, adapted for Rust.
-The adapter does not own compositor state. It reads Triad's native snapshot,
-applies Triad events to a small cache, and projects that cache into JSON shaped
-for Eww.
+`eww-triad` follows Triad's data-first habits, but it has a smaller job. It
+does not own compositor state. It reads a native snapshot, applies native events
+to a cache, and projects that cache into JSON that Eww can read.
 
 ## Boundaries
 
-- `protocol` owns Triad request, reply, and event wire helpers.
+- `protocol` builds Triad requests and checks replies and events.
 - `state` owns the cached shell state and event application.
-- `view` owns the Eww-facing JSON projection.
+- `view` owns the Eww-facing projection.
 - `ipc` owns Unix socket IO and reconnect behavior.
-- `cli` owns argument parsing and command dispatch only.
+- `cli` owns argument parsing and command dispatch.
 
 ## Rules
 
-- Do not rebuild Triad's internal model. Treat the native IPC state as the
-  source of truth.
-- Keep protocol JSON parsing structured through `serde_json`; do not scrape
-  strings.
-- Keep writes explicit. Action helpers build native Triad IPC requests and send
-  them to the socket; they do not mutate local cached state.
-- Reconnect by discarding cached state and waiting for a fresh Triad state event.
-- Tests should prefer fake Unix sockets and fixture JSON over a live compositor.
+- Do not rebuild Triad's internal model. Native IPC is the source of truth.
+- Parse protocol JSON with `serde_json`; do not scrape strings.
+- Keep writes explicit. Action helpers build native requests and send them to
+  the socket. They do not mutate cached state.
+- On reconnect, discard cached state and wait for a fresh Triad state event.
+- Prefer fake Unix sockets and fixture JSON in tests. Live Triad tests must be
+  opt-in.

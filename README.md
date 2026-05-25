@@ -1,14 +1,47 @@
 # eww-triad
 
-`eww-triad` is a small adapter between [Triad](https://github.com/greenm01/triad)
-and [Eww](https://elkowar.github.io/eww/). It speaks Triad's native IPC socket
-and prints newline-delimited JSON that Eww can consume with `deflisten`.
+`eww-triad` is a Rust client for [Triad](https://github.com/greenm01/triad)
+native IPC. It connects to Triad's Unix socket, reads the compositor state, and
+projects that state into JSON shaped for [Eww](https://elkowar.github.io/eww/).
 
-The project is intentionally separate from both Triad and Eww. Eww stays window
-manager independent, Triad keeps its compositor code focused, and this tool owns
-the glue between the two.
+The crate is the main interface. The `eww-triad` binary uses the same client for
+Eww configs and shell scripts.
 
-## Install
+## Rust Crate
+
+Use the crate from Rust code instead of shelling out to the binary:
+
+```toml
+eww-triad = { git = "https://github.com/greenm01/eww-triad", default-features = false }
+```
+
+```rust
+use eww_triad::{Client, QueryRequest};
+
+fn main() -> eww_triad::Result<()> {
+    let client = Client::connect_default()?;
+    let state = client.eww_state_once()?;
+    let capabilities = client.query(QueryRequest::Capabilities)?;
+
+    println!("{}", serde_json::to_string(&state)?);
+    println!("{capabilities}");
+    Ok(())
+}
+```
+
+The package name is `eww-triad`; the Rust crate name is `eww_triad`.
+
+Enable Tokio when your project already runs on an async runtime:
+
+```toml
+eww-triad = { git = "https://github.com/greenm01/eww-triad", default-features = false, features = ["tokio"] }
+```
+
+See [docs/rust-api.md](docs/rust-api.md) for the library API.
+
+## Binary
+
+Install the command-line wrapper:
 
 ```sh
 cargo install --git https://github.com/greenm01/eww-triad
@@ -19,33 +52,6 @@ During local development:
 ```sh
 cargo run -- listen
 ```
-
-## Rust API
-
-Rust apps should import the crate and talk to Triad's socket directly:
-
-```rust
-use eww_triad::{Client, QueryRequest};
-
-fn main() -> eww_triad::Result<()> {
-    let client = Client::connect_default()?;
-    let state = client.eww_state_once()?;
-    let capabilities = client.query(QueryRequest::Capabilities)?;
-    println!("{}", serde_json::to_string(&state)?);
-    println!("{capabilities}");
-    Ok(())
-}
-```
-
-The package name is `eww-triad`; the Rust crate name is `eww_triad`.
-
-Async clients can enable the `tokio` feature:
-
-```toml
-eww-triad = { git = "https://github.com/greenm01/eww-triad", features = ["tokio"] }
-```
-
-## Usage
 
 Stream Eww-friendly state:
 
@@ -59,20 +65,20 @@ Read state once:
 eww-triad once
 ```
 
-Read a native Triad IPC request once:
+Read native Triad replies:
 
 ```sh
 eww-triad query capabilities
 eww-triad query layout-state
 ```
 
-Stream raw native Triad events:
+Stream raw native events:
 
 ```sh
 eww-triad event-stream --events state,layout,window
 ```
 
-Dispatch actions from an Eww widget:
+Send commands:
 
 ```sh
 eww-triad focus-workspace 2
@@ -83,11 +89,10 @@ eww-triad action move-window-to-workspace --payload '{"id":4278190198,"workspace
 eww-triad dispatch-binding key Super+Return
 ```
 
-`eww-triad` uses `--socket`, then `$TRIAD_SOCKET`, then
+Socket lookup follows this order: `--socket`, `$TRIAD_SOCKET`, then
 `$XDG_RUNTIME_DIR/triad.sock`.
 
-See `docs/rust-api.md` for the library API and `docs/native-ipc.md` for the
-CLI/JSON contract.
+See [docs/native-ipc.md](docs/native-ipc.md) for the CLI and JSON contract.
 
 ## Eww Example
 
@@ -102,4 +107,4 @@ CLI/JSON contract.
         {workspace.workspace_idx}))))
 ```
 
-See `examples/eww/` for a runnable starter config.
+See [examples/eww](examples/eww/) for a starter config.

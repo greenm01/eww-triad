@@ -1,11 +1,8 @@
 # Native Triad IPC Contract
 
-`eww-triad` speaks Triad native IPC version 1. It gives Eww configs two useful
-entry points:
-
-- `eww-triad listen`, for state shaped for Eww.
-- `eww-triad query`, `request`, `event-stream`, and `action`, for native Triad
-  replies and events.
+`eww-triad` speaks Triad native IPC version 1. The binary has two jobs: print
+Eww-shaped state for widgets, and expose native Triad reads, events, and writes
+for shell use.
 
 ## Eww State Stream
 
@@ -15,8 +12,8 @@ Use `listen` from `deflisten`:
 (deflisten triad :initial "{}" "eww-triad listen")
 ```
 
-Each output line is JSON with `schema: "eww-triad.v1"`. The schema may grow, but
-existing fields should not change meaning.
+Each output line is JSON with `schema: "eww-triad.v1"`. New fields may appear;
+existing fields should keep their meaning.
 
 Current top-level fields:
 
@@ -59,7 +56,7 @@ Current top-level fields:
 }
 ```
 
-Use `--no-reconnect` to make a dropped stream an error.
+Use `--no-reconnect` when a dropped stream should end the process.
 
 ## Native Reads
 
@@ -92,12 +89,13 @@ eww-triad request '{"triad":{"version":1,"request":"state"}}'
 eww-triad event-stream --events state,layout,window
 ```
 
-The event filters are `state`, `layout`, and `window`.
+The event filters are `state`, `layout`, and `window`. Omit `--events` to ask
+for the full native event set.
 
 ## Native Actions
 
-`action` sends a native action request. Payloads are JSON objects. Triad
-validates the command name and fields.
+`action` sends a native action request. Payloads are JSON objects. Triad checks
+the command name and fields.
 
 ```sh
 eww-triad action focus-workspace --payload '{"workspace_idx":2}'
@@ -150,7 +148,7 @@ The native JSON form is:
 For `axis`, the optional value is `ticks`; the default is `1`. For `gesture`,
 the value is required and becomes `fingers`.
 
-The common widget actions also have short forms:
+Common widget actions also have short forms:
 
 ```sh
 eww-triad focus-workspace 2
