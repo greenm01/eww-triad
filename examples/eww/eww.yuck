@@ -1,0 +1,15 @@
+(deflisten triad :initial "{}" "eww-triad listen")
+
+(defwidget triad-workspaces []
+  (box :class "workspaces"
+    (for workspace in {triad.workspaces}
+      (button :class {workspace.is_active ? "active" : workspace.occupied ? "occupied" : "empty"}
+              :onclick "eww-triad focus-workspace ${workspace.workspace_idx}"
+        {workspace.workspace_idx}))))
+
+(defwindow triad-bar
+  :monitor 0
+  :geometry (geometry :x "0%" :y "0" :width "100%" :height "32px" :anchor "top center")
+  :stacking "fg"
+  :exclusive true
+  (triad-workspaces))

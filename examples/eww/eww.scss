@@ -1,0 +1,22 @@
+.workspaces {
+  padding: 4px 8px;
+  background: #1d2028;
+}
+
+.workspaces button {
+  margin-right: 6px;
+  padding: 2px 8px;
+  color: #d8dee9;
+  background: #2a2f3a;
+  border: 1px solid #3a4250;
+}
+
+.workspaces button.active {
+  color: #111318;
+  background: #8bd5ca;
+}
+
+.workspaces button.occupied {
+  color: #ffffff;
+  border-color: #8aadf4;
+}
