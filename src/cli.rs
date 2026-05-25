@@ -56,16 +56,22 @@ enum Command {
 
 #[derive(Debug, Args)]
 struct FormatArgs {
-    #[arg(long, value_enum, default_value_t = view::OutputFormat::Eww)]
-    format: view::OutputFormat,
+    #[arg(long, value_enum, default_value_t = CliOutputFormat::Eww)]
+    format: CliOutputFormat,
 }
 
 #[derive(Debug, Args)]
 struct ListenArgs {
-    #[arg(long, value_enum, default_value_t = view::OutputFormat::Eww)]
-    format: view::OutputFormat,
+    #[arg(long, value_enum, default_value_t = CliOutputFormat::Eww)]
+    format: CliOutputFormat,
     #[arg(long)]
     no_reconnect: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum CliOutputFormat {
+    Eww,
+    Raw,
 }
 
 #[derive(Debug, Args)]
@@ -210,10 +216,10 @@ fn parse_events(input: &str) -> Result<Vec<String>> {
     Ok(events)
 }
 
-fn print_state(state: &Value, format: view::OutputFormat) -> Result<()> {
+fn print_state(state: &Value, format: CliOutputFormat) -> Result<()> {
     match format {
-        view::OutputFormat::Raw => println!("{}", state),
-        view::OutputFormat::Eww => println!("{}", serde_json::to_string(&view::eww_state(state))?),
+        CliOutputFormat::Raw => println!("{}", state),
+        CliOutputFormat::Eww => println!("{}", serde_json::to_string(&view::eww_state(state))?),
     }
     io::stdout().flush()?;
     Ok(())

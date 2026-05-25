@@ -20,6 +20,31 @@ During local development:
 cargo run -- listen
 ```
 
+## Rust API
+
+Rust apps should import the crate and talk to Triad's socket directly:
+
+```rust
+use eww_triad::{Client, QueryRequest};
+
+fn main() -> eww_triad::Result<()> {
+    let client = Client::connect_default()?;
+    let state = client.eww_state_once()?;
+    let capabilities = client.query(QueryRequest::Capabilities)?;
+    println!("{}", serde_json::to_string(&state)?);
+    println!("{capabilities}");
+    Ok(())
+}
+```
+
+The package name is `eww-triad`; the Rust crate name is `eww_triad`.
+
+Async clients can enable the `tokio` feature:
+
+```toml
+eww-triad = { git = "https://github.com/greenm01/eww-triad", features = ["tokio"] }
+```
+
 ## Usage
 
 Stream Eww-friendly state:
@@ -61,7 +86,8 @@ eww-triad dispatch-binding key Super+Return
 `eww-triad` uses `--socket`, then `$TRIAD_SOCKET`, then
 `$XDG_RUNTIME_DIR/triad.sock`.
 
-See `docs/native-ipc.md` for the supported CLI/JSON contract.
+See `docs/rust-api.md` for the library API and `docs/native-ipc.md` for the
+CLI/JSON contract.
 
 ## Eww Example
 
