@@ -24,4 +24,6 @@ pub enum Error {
     UnexpectedReply { expected: String, actual: String },
     #[error("invalid action payload: {0}")]
     InvalidActionPayload(String),
+    #[error("invalid dispatch-binding request: {0}")]
+    InvalidDispatchBinding(String),
 }

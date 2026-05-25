@@ -55,6 +55,7 @@ eww-triad focus-window 4278190198
 eww-triad switch-layout
 eww-triad set-layout scroller --workspace 2
 eww-triad action move-window-to-workspace --payload '{"id":4278190198,"workspace_idx":2,"follow":true}'
+eww-triad dispatch-binding key Super+Return
 ```
 
 `eww-triad` uses `--socket`, then `$TRIAD_SOCKET`, then

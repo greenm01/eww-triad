@@ -39,7 +39,24 @@ Current top-level fields:
 `listen` reconnects by default. When the stream drops, it emits:
 
 ```json
-{"schema":"eww-triad.v1","connected":false}
+{
+  "schema": "eww-triad.v1",
+  "connected": false,
+  "triad_state_version": null,
+  "active_tag": null,
+  "active_workspace_idx": null,
+  "focused_window_id": null,
+  "capabilities": {},
+  "workspaces": [],
+  "windows": [],
+  "outputs": [],
+  "layouts": [],
+  "layout_cycle": [],
+  "layout_cycle_entries": [],
+  "overview": {},
+  "keyboard_layouts": [],
+  "current_keyboard_layout_idx": null
+}
 ```
 
 Use `--no-reconnect` to make a dropped stream an error.
@@ -111,6 +128,27 @@ Payload fields by Triad argument shape:
 - `warp-pointer`: `{"x": <integer>, "y": <integer>}`
 - `keyboard-layout-target`: `{}`, `{"layout": "next|prev"}`, or `{"layout": <index>}`
 - `screenshot`: optional `path`, `show_pointer`, `write_to_disk`, and `copy_to_clipboard`
+
+## Native Binding Dispatch
+
+`dispatch-binding` runs a binding already known to Triad. It does not inject
+input.
+
+```sh
+eww-triad dispatch-binding key Super+Return
+eww-triad dispatch-binding pointer BTN_LEFT
+eww-triad dispatch-binding axis WheelDown 2
+eww-triad dispatch-binding gesture swipe-up 3
+```
+
+The native JSON form is:
+
+```json
+{"triad":{"version":1,"request":"dispatch-binding","kind":"key","binding":"Super+Return"}}
+```
+
+For `axis`, the optional value is `ticks`; the default is `1`. For `gesture`,
+the value is required and becomes `fingers`.
 
 The common widget actions also have short forms:
 

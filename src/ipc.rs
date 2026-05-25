@@ -337,4 +337,55 @@ mod tests {
         handle.join().unwrap();
         let _ = fs::remove_file(path);
     }
+
+    #[test]
+    fn dispatch_binding_round_trips_over_fake_socket() {
+        let path = socket_path("dispatch-binding");
+        let listener = UnixListener::bind(&path).unwrap();
+        let handle = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            let mut request = String::new();
+            reader.read_line(&mut request).unwrap();
+            assert!(request.contains("\"request\":\"dispatch-binding\""));
+            assert!(request.contains("\"kind\":\"axis\""));
+            assert!(request.contains("\"ticks\":2"));
+            writeln!(
+                &stream,
+                "{}",
+                json!({"ok": true, "triad": {"version": 1, "type": "binding-dispatch", "kind": "axis", "binding": "WheelDown", "dispatched": 1}})
+            )
+            .unwrap();
+        });
+
+        let request = protocol::dispatch_binding_request("axis", "WheelDown", Some(2)).unwrap();
+        let reply = send_action(&path, &request).unwrap();
+        assert_eq!(reply["triad"]["type"], json!("binding-dispatch"));
+        handle.join().unwrap();
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn dispatch_binding_error_reply_is_returned() {
+        let path = socket_path("dispatch-binding-error");
+        let listener = UnixListener::bind(&path).unwrap();
+        let handle = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            let mut request = String::new();
+            reader.read_line(&mut request).unwrap();
+            writeln!(
+                &stream,
+                "{}",
+                json!({"ok": false, "error": "binding not found"})
+            )
+            .unwrap();
+        });
+
+        let request = protocol::dispatch_binding_request("key", "Super+Missing", None).unwrap();
+        let err = send_action(&path, &request).unwrap_err();
+        assert!(err.to_string().contains("binding not found"));
+        handle.join().unwrap();
+        let _ = fs::remove_file(path);
+    }
 }

@@ -53,7 +53,24 @@ pub fn eww_state(state: &Value) -> EwwState<'_> {
 }
 
 pub fn disconnected_state() -> Value {
-    json!({"schema": "eww-triad.v1", "connected": false})
+    json!({
+        "schema": "eww-triad.v1",
+        "connected": false,
+        "triad_state_version": null,
+        "active_tag": null,
+        "active_workspace_idx": null,
+        "focused_window_id": null,
+        "capabilities": {},
+        "workspaces": [],
+        "windows": [],
+        "outputs": [],
+        "layouts": [],
+        "layout_cycle": [],
+        "layout_cycle_entries": [],
+        "overview": {},
+        "keyboard_layouts": [],
+        "current_keyboard_layout_idx": null,
+    })
 }
 
 fn focused_window_id(windows: &Value) -> Option<u64> {
@@ -98,5 +115,18 @@ mod tests {
         assert_eq!(projected.focused_window_id, Some(99));
         assert_eq!(projected.capabilities["event_stream"], json!(true));
         assert_eq!(projected.layout_cycle_entries[0]["id"], json!("scroller"));
+    }
+
+    #[test]
+    fn disconnected_payload_keeps_public_shape() {
+        let disconnected = disconnected_state();
+        let connected = serde_json::to_value(eww_state(&json!({}))).unwrap();
+
+        let disconnected_keys = disconnected.as_object().unwrap().keys().collect::<Vec<_>>();
+        let connected_keys = connected.as_object().unwrap().keys().collect::<Vec<_>>();
+        assert_eq!(disconnected_keys, connected_keys);
+        assert_eq!(disconnected["connected"], json!(false));
+        assert_eq!(disconnected["workspaces"], json!([]));
+        assert_eq!(disconnected["overview"], json!({}));
     }
 }
