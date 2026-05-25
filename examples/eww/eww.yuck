@@ -1,4 +1,4 @@
-(deflisten triad :initial "{}" "eww-triad listen")
+(deflisten triad :initial "{\"workspaces\":[]}" "eww-triad listen")
 
 (defwidget triad-workspaces []
   (box :class "workspaces"
