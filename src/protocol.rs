@@ -4,18 +4,58 @@ use crate::error::{Error, Result};
 
 pub const TRIAD_IPC_VERSION: u64 = 1;
 
+pub const NATIVE_QUERY_REQUESTS: &[&str] = &[
+    "state",
+    "capabilities",
+    "workspaces",
+    "outputs",
+    "windows",
+    "focused-window",
+    "overview-state",
+    "keyboard-layouts",
+    "layout-state",
+    "commands",
+];
+
+pub const NATIVE_EVENT_NAMES: &[&str] = &["state", "layout", "window"];
+
 pub fn request(name: &str) -> Value {
     json!({"triad": {"version": TRIAD_IPC_VERSION, "request": name}})
 }
 
+pub fn query_request(name: &str) -> Result<Value> {
+    if NATIVE_QUERY_REQUESTS.contains(&name) {
+        Ok(request(name))
+    } else {
+        Err(Error::UnsupportedRequest(name.to_string()))
+    }
+}
+
 pub fn event_stream_request() -> Value {
-    json!({
+    event_stream_request_for(NATIVE_EVENT_NAMES).expect("default native events are valid")
+}
+
+pub fn event_stream_request_for(events: &[&str]) -> Result<Value> {
+    validate_event_names(events)?;
+    Ok(json!({
         "triad": {
             "version": TRIAD_IPC_VERSION,
             "request": "event-stream",
-            "events": ["state", "layout", "window"]
+            "events": events
         }
-    })
+    }))
+}
+
+pub fn validate_event_names(events: &[&str]) -> Result<()> {
+    if events.is_empty() {
+        return Err(Error::UnsupportedEvent("<empty>".to_string()));
+    }
+    for event in events {
+        if !NATIVE_EVENT_NAMES.contains(event) {
+            return Err(Error::UnsupportedEvent((*event).to_string()));
+        }
+    }
+    Ok(())
 }
 
 pub fn action_request(action: &str, payload: Value) -> Result<Value> {
@@ -65,17 +105,28 @@ pub fn reply_type(reply: &Value) -> Option<&str> {
 
 pub fn state_from_reply(value: &Value) -> Result<Value> {
     let triad = reply_ok(value)?;
-    let actual = reply_type(triad).unwrap_or("<missing>");
-    if actual != "state" {
-        return Err(Error::UnexpectedReply {
-            expected: "state".to_string(),
-            actual: actual.to_string(),
-        });
-    }
+    expect_reply_type(triad, "state")?;
     triad
         .get("state")
         .cloned()
         .ok_or_else(|| Error::Triad("state reply did not include state".to_string()))
+}
+
+pub fn expect_reply_type(reply: &Value, expected: &str) -> Result<()> {
+    let actual = reply_type(reply).unwrap_or("<missing>");
+    if actual == expected {
+        Ok(())
+    } else {
+        Err(Error::UnexpectedReply {
+            expected: expected.to_string(),
+            actual: actual.to_string(),
+        })
+    }
+}
+
+pub fn validate_query_reply(request_name: &str, value: &Value) -> Result<()> {
+    let triad = reply_ok(value)?;
+    expect_reply_type(triad, request_name)
 }
 
 pub fn event_name(value: &Value) -> Option<&str> {
@@ -102,6 +153,30 @@ mod tests {
         assert_eq!(value["triad"]["request"], json!("action"));
         assert_eq!(value["triad"]["action"], json!("focus-workspace"));
         assert_eq!(value["triad"]["workspace_idx"], json!(2));
+    }
+
+    #[test]
+    fn query_request_accepts_native_reads() {
+        let value = query_request("capabilities").unwrap();
+        assert_eq!(value["triad"]["request"], json!("capabilities"));
+    }
+
+    #[test]
+    fn query_request_rejects_unknown_reads() {
+        let err = query_request("not-real").unwrap_err();
+        assert!(err.to_string().contains("not-real"));
+    }
+
+    #[test]
+    fn event_stream_request_can_select_events() {
+        let value = event_stream_request_for(&["state", "window"]).unwrap();
+        assert_eq!(value["triad"]["events"], json!(["state", "window"]));
+    }
+
+    #[test]
+    fn event_stream_request_rejects_unknown_events() {
+        let err = event_stream_request_for(&["state", "bad"]).unwrap_err();
+        assert!(err.to_string().contains("bad"));
     }
 
     #[test]

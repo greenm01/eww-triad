@@ -20,6 +20,9 @@ struct Cli {
 enum Command {
     Once(FormatArgs),
     Listen(ListenArgs),
+    Query(QueryArgs),
+    Request(RequestArgs),
+    EventStream(EventStreamArgs),
     Action(ActionArgs),
     FocusWorkspace { idx: u64 },
     FocusWindow { id: u64 },
@@ -37,6 +40,24 @@ struct FormatArgs {
 struct ListenArgs {
     #[arg(long, value_enum, default_value_t = view::OutputFormat::Eww)]
     format: view::OutputFormat,
+    #[arg(long)]
+    no_reconnect: bool,
+}
+
+#[derive(Debug, Args)]
+struct QueryArgs {
+    request: String,
+}
+
+#[derive(Debug, Args)]
+struct RequestArgs {
+    json: String,
+}
+
+#[derive(Debug, Args)]
+struct EventStreamArgs {
+    #[arg(long, default_value = "state,layout,window")]
+    events: String,
     #[arg(long)]
     no_reconnect: bool,
 }
@@ -68,6 +89,20 @@ pub fn run() -> Result<()> {
         Command::Listen(args) => ipc::listen(&socket_path, !args.no_reconnect, |state| {
             print_state(state, args.format)
         }),
+        Command::Query(args) => {
+            let request = protocol::query_request(&args.request)?;
+            let reply = ipc::request_once(&socket_path, &request)?;
+            protocol::validate_query_reply(&args.request, &reply)?;
+            print_reply(&reply)
+        }
+        Command::Request(args) => {
+            let request: Value = serde_json::from_str(&args.json)?;
+            print_reply(&ipc::request_once(&socket_path, &request)?)
+        }
+        Command::EventStream(args) => {
+            let events = parse_events(&args.events)?;
+            ipc::event_stream(&socket_path, !args.no_reconnect, &events, print_reply)
+        }
         Command::Action(args) => {
             let payload: Value = serde_json::from_str(&args.payload)
                 .map_err(|err| Error::InvalidActionPayload(err.to_string()))?;
@@ -94,6 +129,18 @@ pub fn run() -> Result<()> {
     }
 }
 
+fn parse_events(input: &str) -> Result<Vec<String>> {
+    let events = input
+        .split(',')
+        .map(str::trim)
+        .filter(|event| !event.is_empty())
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    let refs = events.iter().map(String::as_str).collect::<Vec<_>>();
+    protocol::validate_event_names(&refs)?;
+    Ok(events)
+}
+
 fn print_state(state: &Value, format: view::OutputFormat) -> Result<()> {
     match format {
         view::OutputFormat::Raw => println!("{}", state),
@@ -107,4 +154,23 @@ fn print_reply(reply: &Value) -> Result<()> {
     println!("{}", reply);
     io::stdout().flush()?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_events_accepts_csv() {
+        assert_eq!(
+            parse_events("state, window").unwrap(),
+            vec!["state".to_string(), "window".to_string()]
+        );
+    }
+
+    #[test]
+    fn parse_events_rejects_unknown_event() {
+        let err = parse_events("state,bad").unwrap_err();
+        assert!(err.to_string().contains("bad"));
+    }
 }

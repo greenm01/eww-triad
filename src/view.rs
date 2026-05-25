@@ -11,14 +11,17 @@ pub enum OutputFormat {
 pub struct EwwState<'a> {
     pub schema: &'static str,
     pub connected: bool,
+    pub triad_state_version: Option<u64>,
     pub active_tag: Option<u64>,
     pub active_workspace_idx: Option<u64>,
     pub focused_window_id: Option<u64>,
+    pub capabilities: &'a Value,
     pub workspaces: &'a Value,
     pub windows: &'a Value,
     pub outputs: &'a Value,
     pub layouts: &'a Value,
     pub layout_cycle: &'a Value,
+    pub layout_cycle_entries: &'a Value,
     pub overview: &'a Value,
     pub keyboard_layouts: &'a Value,
     pub current_keyboard_layout_idx: Option<u64>,
@@ -30,14 +33,17 @@ pub fn eww_state(state: &Value) -> EwwState<'_> {
     EwwState {
         schema: "eww-triad.v1",
         connected: true,
+        triad_state_version: state.get("version").and_then(Value::as_u64),
         active_tag: layout.get("active_tag").and_then(Value::as_u64),
         active_workspace_idx: layout.get("active_workspace_idx").and_then(Value::as_u64),
         focused_window_id: focused_window_id(windows),
+        capabilities: state.get("capabilities").unwrap_or(&Value::Null),
         workspaces: layout.get("workspaces").unwrap_or(&Value::Null),
         windows,
         outputs: state.get("outputs").unwrap_or(&Value::Null),
         layouts: layout.get("layouts").unwrap_or(&Value::Null),
         layout_cycle: layout.get("layout_cycle").unwrap_or(&Value::Null),
+        layout_cycle_entries: layout.get("layout_cycle_entries").unwrap_or(&Value::Null),
         overview: state.get("overview").unwrap_or(&Value::Null),
         keyboard_layouts: state.get("keyboard_layouts").unwrap_or(&Value::Null),
         current_keyboard_layout_idx: state
@@ -69,12 +75,15 @@ mod tests {
     #[test]
     fn projection_lifts_common_bar_fields() {
         let state = json!({
+            "version": 11,
+            "capabilities": {"event_stream": true},
             "layout": {
                 "active_tag": 4,
                 "active_workspace_idx": 2,
                 "workspaces": [{"workspace_idx": 2}],
                 "layouts": [{"id": "scroller"}],
-                "layout_cycle": ["scroller"]
+                "layout_cycle": ["scroller"],
+                "layout_cycle_entries": [{"kind": "builtin", "id": "scroller"}]
             },
             "windows": [{"id": 99, "is_focused": true}],
             "outputs": [{"name": "DP-1"}],
@@ -84,7 +93,10 @@ mod tests {
         });
         let projected = eww_state(&state);
         assert_eq!(projected.schema, "eww-triad.v1");
+        assert_eq!(projected.triad_state_version, Some(11));
         assert_eq!(projected.active_tag, Some(4));
         assert_eq!(projected.focused_window_id, Some(99));
+        assert_eq!(projected.capabilities["event_stream"], json!(true));
+        assert_eq!(projected.layout_cycle_entries[0]["id"], json!("scroller"));
     }
 }

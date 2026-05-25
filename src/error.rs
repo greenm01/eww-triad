@@ -14,6 +14,12 @@ pub enum Error {
     Json(#[from] serde_json::Error),
     #[error("triad returned an error: {0}")]
     Triad(String),
+    #[error("unsupported native request: {0}")]
+    UnsupportedRequest(String),
+    #[error("unsupported native event: {0}")]
+    UnsupportedEvent(String),
+    #[error("stream disconnected")]
+    StreamDisconnected,
     #[error("expected triad reply type {expected}, got {actual}")]
     UnexpectedReply { expected: String, actual: String },
     #[error("invalid action payload: {0}")]
