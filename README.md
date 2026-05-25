@@ -12,7 +12,7 @@ Eww configs and shell scripts.
 Use the crate from Rust code instead of shelling out to the binary:
 
 ```toml
-eww-triad = { git = "https://github.com/greenm01/eww-triad", default-features = false }
+eww-triad = { version = "0.1", default-features = false }
 ```
 
 ```rust
@@ -34,7 +34,7 @@ The package name is `eww-triad`; the Rust crate name is `eww_triad`.
 Enable Tokio when your project already runs on an async runtime:
 
 ```toml
-eww-triad = { git = "https://github.com/greenm01/eww-triad", default-features = false, features = ["tokio"] }
+eww-triad = { version = "0.1", default-features = false, features = ["tokio"] }
 ```
 
 See [docs/rust-api.md](docs/rust-api.md) for the library API.
@@ -44,7 +44,7 @@ See [docs/rust-api.md](docs/rust-api.md) for the library API.
 Install the command-line wrapper:
 
 ```sh
-cargo install --git https://github.com/greenm01/eww-triad
+cargo install eww-triad
 ```
 
 During local development:

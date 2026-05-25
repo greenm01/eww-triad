@@ -9,7 +9,7 @@ The package is named `eww-triad`. Import it as `eww_triad`.
 For library use, disable default features so you do not pull in the CLI parser:
 
 ```toml
-eww-triad = { git = "https://github.com/greenm01/eww-triad", default-features = false }
+eww-triad = { version = "0.1", default-features = false }
 ```
 
 ## Blocking Client
@@ -115,7 +115,7 @@ fn main() -> eww_triad::Result<()> {
 Enable `tokio` for the async client:
 
 ```toml
-eww-triad = { git = "https://github.com/greenm01/eww-triad", default-features = false, features = ["tokio"] }
+eww-triad = { version = "0.1", default-features = false, features = ["tokio"] }
 ```
 
 ```rust
